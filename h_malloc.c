@@ -311,6 +311,7 @@ struct __attribute__((aligned(CACHELINE_SIZE))) size_class {
 };
 
 #define CLASS_REGION_SIZE (size_t)CONFIG_CLASS_REGION_SIZE
+
 #define REAL_CLASS_REGION_SIZE (CLASS_REGION_SIZE * 2)
 #define ARENA_SIZE (REAL_CLASS_REGION_SIZE * N_SIZE_CLASSES)
 static const size_t slab_region_size = ARENA_SIZE * N_ARENA;
