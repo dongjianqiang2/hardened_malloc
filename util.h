@@ -47,6 +47,12 @@ typedef unsigned __int128 u128;
 
 #define U64_WIDTH 64
 
+#if defined(__aarch64__) && (defined(__ILP32__) || defined(_ILP32))
+#define HMALLOC_AARCH64_ILP32 1
+#else
+#define HMALLOC_AARCH64_ILP32 0
+#endif
+
 static inline int ffz64(u64 x) {
     return __builtin_ffsll(~x);
 }
