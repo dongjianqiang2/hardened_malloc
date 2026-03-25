@@ -3,7 +3,7 @@
 
 #include "util.h"
 
-#ifdef HAS_ARM_MTE
+#if defined(HAS_ARM_MTE) && UINTPTR_MAX > UINT32_MAX
 #include "arm_mte.h"
 #define MEMTAG 1
 // Note that bionic libc always reserves tag 0 via PR_MTE_TAG_MASK prctl
@@ -12,7 +12,7 @@
 #endif
 
 static inline void *untag_pointer(void *ptr) {
-#ifdef HAS_ARM_MTE
+#if defined(HAS_ARM_MTE) && UINTPTR_MAX > UINT32_MAX
     const uintptr_t mask = UINTPTR_MAX >> 8;
     return (void *) ((uintptr_t) ptr & mask);
 #else
@@ -21,7 +21,7 @@ static inline void *untag_pointer(void *ptr) {
 }
 
 static inline const void *untag_const_pointer(const void *ptr) {
-#ifdef HAS_ARM_MTE
+#if defined(HAS_ARM_MTE) && UINTPTR_MAX > UINT32_MAX
     const uintptr_t mask = UINTPTR_MAX >> 8;
     return (const void *) ((uintptr_t) ptr & mask);
 #else
@@ -30,7 +30,7 @@ static inline const void *untag_const_pointer(const void *ptr) {
 }
 
 static inline void *set_pointer_tag(void *ptr, u8 tag) {
-#ifdef HAS_ARM_MTE
+#if defined(HAS_ARM_MTE) && UINTPTR_MAX > UINT32_MAX
     return (void *) (((uintptr_t) tag << 56) | (uintptr_t) untag_pointer(ptr));
 #else
     (void) tag;
@@ -39,7 +39,7 @@ static inline void *set_pointer_tag(void *ptr, u8 tag) {
 }
 
 static inline u8 get_pointer_tag(void *ptr) {
-#ifdef HAS_ARM_MTE
+#if defined(HAS_ARM_MTE) && UINTPTR_MAX > UINT32_MAX
     return (((uintptr_t) ptr) >> 56) & 0xf;
 #else
     (void) ptr;
