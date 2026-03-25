@@ -28,7 +28,17 @@
 #define REGION_QUARANTINE (REGION_QUARANTINE_RANDOM_LENGTH > 0 || REGION_QUARANTINE_QUEUE_LENGTH > 0)
 #define MREMAP_MOVE_THRESHOLD ((size_t)32 * 1024 * 1024)
 
+#if defined(__aarch64__) && defined(__ILP32__)
+#define AARCH64_ILP32 1
+#else
+#define AARCH64_ILP32 0
+#endif
+
+#if AARCH64_ILP32
+static_assert(sizeof(void *) == 4, "AArch64 ILP32 expects 32-bit pointers");
+#else
 static_assert(sizeof(void *) == 8, "64-bit only");
+#endif
 
 static_assert(!WRITE_AFTER_FREE_CHECK || ZERO_ON_FREE, "WRITE_AFTER_FREE_CHECK depends on ZERO_ON_FREE");
 

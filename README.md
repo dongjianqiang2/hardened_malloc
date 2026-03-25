@@ -62,6 +62,9 @@ planned changes to OpenBSD malloc ended up being too extensive and invasive so
 this project was started as a fresh implementation better able to accomplish
 the goals. For 32-bit, a port of OpenBSD malloc with small extensions can be
 used instead as this allocator fundamentally doesn't support that environment.
+The one exception is AArch64 ILP32, which is supported with an automatically
+reduced geometry (single arena and smaller class regions) to fit in the
+limited address space.
 
 ## Dependencies
 

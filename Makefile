@@ -5,6 +5,17 @@ ifneq ($(VARIANT),)
     include config/$(VARIANT).mk
 endif
 
+# AArch64 ILP32 has a 32-bit pointer / size_t ABI and cannot support the default
+# large region geometry. Force a compact configuration that fits the address space.
+IS_AARCH64_ILP32 := $(shell $(CC) -dM -E - </dev/null | \
+    awk '/__aarch64__/ {a=1} /__ILP32__/ {i=1} END { if (a && i) print 1; else print 0 }')
+ifeq ($(IS_AARCH64_ILP32),1)
+    CONFIG_EXTENDED_SIZE_CLASSES := false
+    CONFIG_LARGE_SIZE_CLASSES := false
+    CONFIG_CLASS_REGION_SIZE := 16777216
+    CONFIG_N_ARENA := 1
+endif
+
 ifeq ($(VARIANT),default)
     SUFFIX :=
 else
