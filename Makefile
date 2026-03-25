@@ -5,6 +5,8 @@ ifneq ($(VARIANT),)
     include config/$(VARIANT).mk
 endif
 
+IS_ILP32 := $(shell $(CC) -dM -E - </dev/null | grep -qE '(__ILP32__|_ILP32)' && echo true || echo false)
+
 ifeq ($(VARIANT),default)
     SUFFIX :=
 else
@@ -87,6 +89,13 @@ endif
 
 ifeq (,$(filter $(CONFIG_SELF_INIT),true false))
     $(error CONFIG_SELF_INIT must be true or false)
+endif
+
+ifeq ($(IS_ILP32),true)
+    ifeq ($(shell [ $(CONFIG_CLASS_REGION_SIZE) -le 4294967295 ] && echo true || echo false),false)
+        $(warning CONFIG_CLASS_REGION_SIZE exceeds ilp32 address space, clamping to 1GiB)
+        CONFIG_CLASS_REGION_SIZE := 1073741824
+    endif
 endif
 
 CPPFLAGS += \

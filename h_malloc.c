@@ -28,7 +28,8 @@
 #define REGION_QUARANTINE (REGION_QUARANTINE_RANDOM_LENGTH > 0 || REGION_QUARANTINE_QUEUE_LENGTH > 0)
 #define MREMAP_MOVE_THRESHOLD ((size_t)32 * 1024 * 1024)
 
-static_assert(sizeof(void *) == 8, "64-bit only");
+static_assert(sizeof(void *) == 8 || HMALLOC_AARCH64_ILP32,
+    "requires 64-bit pointers (or aarch64 ilp32)");
 
 static_assert(!WRITE_AFTER_FREE_CHECK || ZERO_ON_FREE, "WRITE_AFTER_FREE_CHECK depends on ZERO_ON_FREE");
 
@@ -47,6 +48,8 @@ static_assert(GUARD_SLABS_INTERVAL >= 1, "invalid guard slabs interval (minimum 
 static_assert(GUARD_SIZE_DIVISOR >= 1, "invalid guard size divisor (minimum 1)");
 static_assert(CONFIG_CLASS_REGION_SIZE >= 1048576, "invalid class region size (minimum 1048576)");
 static_assert(CONFIG_CLASS_REGION_SIZE <= 1099511627776, "invalid class region size (maximum 1099511627776)");
+static_assert(CONFIG_CLASS_REGION_SIZE <= SIZE_MAX,
+    "CONFIG_CLASS_REGION_SIZE exceeds addressable space for this ABI");
 static_assert(REGION_QUARANTINE_SKIP_THRESHOLD >= 0,
     "invalid region quarantine skip threshold (minimum 0)");
 static_assert(MREMAP_MOVE_THRESHOLD >= REGION_QUARANTINE_SKIP_THRESHOLD,
