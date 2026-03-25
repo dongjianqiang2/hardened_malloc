@@ -36,6 +36,7 @@
 
 #if AARCH64_ILP32
 static_assert(sizeof(void *) == 4, "AArch64 ILP32 expects 32-bit pointers");
+static_assert(N_ARENA == 1, "AArch64 ILP32 requires CONFIG_N_ARENA=1");
 #else
 static_assert(sizeof(void *) == 8, "64-bit only");
 #endif
@@ -320,7 +321,18 @@ struct __attribute__((aligned(CACHELINE_SIZE))) size_class {
     size_t metadata_count_unguarded;
 };
 
+#if AARCH64_ILP32
+// Keep region sizing representable in ILP32 even if CONFIG_CLASS_REGION_SIZE was not overridden.
+#define ILP32_CLASS_REGION_SIZE_FALLBACK 16777216ULL
+#if CONFIG_CLASS_REGION_SIZE > UINT32_MAX
+#define CLASS_REGION_SIZE (size_t)ILP32_CLASS_REGION_SIZE_FALLBACK
+#else
 #define CLASS_REGION_SIZE (size_t)CONFIG_CLASS_REGION_SIZE
+#endif
+#else
+#define CLASS_REGION_SIZE (size_t)CONFIG_CLASS_REGION_SIZE
+#endif
+
 #define REAL_CLASS_REGION_SIZE (CLASS_REGION_SIZE * 2)
 #define ARENA_SIZE (REAL_CLASS_REGION_SIZE * N_SIZE_CLASSES)
 static const size_t slab_region_size = ARENA_SIZE * N_ARENA;

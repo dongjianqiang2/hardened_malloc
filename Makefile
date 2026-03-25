@@ -7,7 +7,7 @@ endif
 
 # AArch64 ILP32 has a 32-bit pointer / size_t ABI and cannot support the default
 # large region geometry. Force a compact configuration that fits the address space.
-IS_AARCH64_ILP32 := $(shell $(CC) -dM -E - </dev/null | \
+IS_AARCH64_ILP32 := $(shell $(CC) $(CPPFLAGS) $(CFLAGS) -dM -E -x c - </dev/null | \
     awk '/__aarch64__/ {a=1} /__ILP32__/ {i=1} END { if (a && i) print 1; else print 0 }')
 ifeq ($(IS_AARCH64_ILP32),1)
     CONFIG_EXTENDED_SIZE_CLASSES := false
