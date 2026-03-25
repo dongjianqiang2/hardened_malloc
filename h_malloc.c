@@ -28,7 +28,13 @@
 #define REGION_QUARANTINE (REGION_QUARANTINE_RANDOM_LENGTH > 0 || REGION_QUARANTINE_QUEUE_LENGTH > 0)
 #define MREMAP_MOVE_THRESHOLD ((size_t)32 * 1024 * 1024)
 
-static_assert(sizeof(void *) == 8, "64-bit only");
+#if defined(__aarch64__) && defined(__ILP32__)
+#define SUPPORTED_ABI 1
+#else
+#define SUPPORTED_ABI (sizeof(void *) == 8)
+#endif
+
+static_assert(SUPPORTED_ABI, "unsupported ABI (expected 64-bit pointers or aarch64 ilp32)");
 
 static_assert(!WRITE_AFTER_FREE_CHECK || ZERO_ON_FREE, "WRITE_AFTER_FREE_CHECK depends on ZERO_ON_FREE");
 
@@ -360,7 +366,7 @@ static struct slab_metadata *alloc_metadata(struct size_class *c, size_t slab_si
 
 static void set_used_slot(struct slab_metadata *metadata, size_t index) {
     size_t bucket = index / U64_WIDTH;
-    metadata->bitmap[bucket] |= 1UL << (index - bucket * U64_WIDTH);
+    metadata->bitmap[bucket] |= UINT64_C(1) << (index - bucket * U64_WIDTH);
 #ifdef SLAB_METADATA_COUNT
     metadata->count++;
 #endif
@@ -368,7 +374,7 @@ static void set_used_slot(struct slab_metadata *metadata, size_t index) {
 
 static void clear_used_slot(struct slab_metadata *metadata, size_t index) {
     size_t bucket = index / U64_WIDTH;
-    metadata->bitmap[bucket] &= ~(1UL << (index - bucket * U64_WIDTH));
+    metadata->bitmap[bucket] &= ~(UINT64_C(1) << (index - bucket * U64_WIDTH));
 #ifdef SLAB_METADATA_COUNT
     metadata->count--;
 #endif
@@ -376,28 +382,28 @@ static void clear_used_slot(struct slab_metadata *metadata, size_t index) {
 
 static bool is_used_slot(const struct slab_metadata *metadata, size_t index) {
     size_t bucket = index / U64_WIDTH;
-    return (metadata->bitmap[bucket] >> (index - bucket * U64_WIDTH)) & 1UL;
+    return (metadata->bitmap[bucket] >> (index - bucket * U64_WIDTH)) & UINT64_C(1);
 }
 
 #if SLAB_QUARANTINE
 static void set_quarantine_slot(struct slab_metadata *metadata, size_t index) {
     size_t bucket = index / U64_WIDTH;
-    metadata->quarantine_bitmap[bucket] |= 1UL << (index - bucket * U64_WIDTH);
+    metadata->quarantine_bitmap[bucket] |= UINT64_C(1) << (index - bucket * U64_WIDTH);
 }
 
 static void clear_quarantine_slot(struct slab_metadata *metadata, size_t index) {
     size_t bucket = index / U64_WIDTH;
-    metadata->quarantine_bitmap[bucket] &= ~(1UL << (index - bucket * U64_WIDTH));
+    metadata->quarantine_bitmap[bucket] &= ~(UINT64_C(1) << (index - bucket * U64_WIDTH));
 }
 
 static bool is_quarantine_slot(const struct slab_metadata *metadata, size_t index) {
     size_t bucket = index / U64_WIDTH;
-    return (metadata->quarantine_bitmap[bucket] >> (index - bucket * U64_WIDTH)) & 1UL;
+    return (metadata->quarantine_bitmap[bucket] >> (index - bucket * U64_WIDTH)) & UINT64_C(1);
 }
 #endif
 
 static u64 get_mask(size_t slots) {
-    return slots < U64_WIDTH ? ~0UL << slots : 0;
+    return slots < U64_WIDTH ? UINT64_MAX << slots : 0;
 }
 
 static size_t get_free_slot(struct random_state *rng, size_t slots, const struct slab_metadata *metadata) {
@@ -405,7 +411,7 @@ static size_t get_free_slot(struct random_state *rng, size_t slots, const struct
         // randomize start location for linear search (uniform random choice is too slow)
         size_t random_index = get_random_u16_uniform(rng, slots);
         size_t first_bitmap = random_index / U64_WIDTH;
-        u64 random_split = ~(~0UL << (random_index - first_bitmap * U64_WIDTH));
+        u64 random_split = ~(UINT64_MAX << (random_index - first_bitmap * U64_WIDTH));
 
         size_t i = first_bitmap;
         u64 masked = metadata->bitmap[i];
@@ -415,7 +421,7 @@ static size_t get_free_slot(struct random_state *rng, size_t slots, const struct
                 masked |= get_mask(slots - i * U64_WIDTH);
             }
 
-            if (masked != ~0UL) {
+            if (masked != UINT64_MAX) {
                 return ffz64(masked) - 1 + i * U64_WIDTH;
             }
 
@@ -429,7 +435,7 @@ static size_t get_free_slot(struct random_state *rng, size_t slots, const struct
                 masked |= get_mask(slots - i * U64_WIDTH);
             }
 
-            if (masked != ~0UL) {
+            if (masked != UINT64_MAX) {
                 return ffz64(masked) - 1 + i * U64_WIDTH;
             }
         }
@@ -444,18 +450,19 @@ static bool has_free_slots(size_t slots, const struct slab_metadata *metadata) {
 #else
     if (slots <= U64_WIDTH) {
         u64 masked = metadata->bitmap[0] | get_mask(slots);
-        return masked != ~0UL;
+        return masked != UINT64_MAX;
     }
     if (slots <= U64_WIDTH * 2) {
         u64 masked = metadata->bitmap[1] | get_mask(slots - U64_WIDTH);
-        return metadata->bitmap[0] != ~0UL || masked != ~0UL;
+        return metadata->bitmap[0] != UINT64_MAX || masked != UINT64_MAX;
     }
     if (slots <= U64_WIDTH * 3) {
         u64 masked = metadata->bitmap[2] | get_mask(slots - U64_WIDTH * 2);
-        return metadata->bitmap[0] != ~0UL || metadata->bitmap[1] != ~0UL || masked != ~0UL;
+        return metadata->bitmap[0] != UINT64_MAX || metadata->bitmap[1] != UINT64_MAX || masked != UINT64_MAX;
     }
     u64 masked = metadata->bitmap[3] | get_mask(slots - U64_WIDTH * 3);
-    return metadata->bitmap[0] != ~0UL || metadata->bitmap[1] != ~0UL || metadata->bitmap[2] != ~0UL || masked != ~0UL;
+    return metadata->bitmap[0] != UINT64_MAX || metadata->bitmap[1] != UINT64_MAX ||
+        metadata->bitmap[2] != UINT64_MAX || masked != UINT64_MAX;
 #endif
 }
 
